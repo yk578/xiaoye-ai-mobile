@@ -28,7 +28,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
     this.name = config.name
     this.baseUrl = config.baseUrl.replace(/\/+$/, '')
     this.config = {
-      apiKey: config.apiKey ?? null,
+      apiKey: config.apiKey || null,
       authStyle: config.authStyle ?? DEFAULT_AUTH_STYLE,
       defaultModel: config.defaultModel,
       defaultTemperature: config.defaultTemperature ?? 0.7,
