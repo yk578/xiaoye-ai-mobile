@@ -5,6 +5,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNav } from '../components/NavContext'
 import { listConversations, deleteConversation, getMessages, getConversation } from '../services/conversation-store'
+import { getStats, recall, forget } from '../core/memory/memory-store'
 
 interface ConversationSummary {
   id: string
@@ -21,9 +22,14 @@ export function MemoryScreen({ navigation }: { navigation?: any }) {
   const [convs, setConvs] = useState<ConversationSummary[]>([])
   const [showDetail, setShowDetail] = useState<string | null>(null)
   const [detailMessages, setDetailMessages] = useState<number>(0)
+  const [tab, setTab] = useState<'conversations' | 'longterm'>('conversations')
+  const [longtermMemories, setLongtermMemories] = useState<Array<{
+    id: string; content: string; category: string; importance: number
+  }>>([])
 
   useEffect(() => {
     loadConvs()
+    loadLongterm()
   }, [])
 
   const loadConvs = async () => {
@@ -35,6 +41,19 @@ export function MemoryScreen({ navigation }: { navigation?: any }) {
       model: c.model || '',
       lastActive: formatTime(c.updatedAt),
     })))
+  }
+
+  const loadLongterm = async () => {
+    const all = await recall('', 50).catch(() => [])
+    setLongtermMemories(all.map(e => ({
+      id: e.id, content: e.content,
+      category: e.category, importance: e.importance,
+    })))
+  }
+
+  const deleteMemory = async (id: string) => {
+    await forget(id)
+    loadLongterm()
   }
 
   const viewDetail = async (id: string) => {
@@ -74,6 +93,22 @@ export function MemoryScreen({ navigation }: { navigation?: any }) {
         {!showDetail && <View style={styles.menuButton} />}
       </View>
 
+      {/* ── Tab 切换 ── */}
+      {!showDetail && (
+        <View style={styles.tabBar}>
+          <TouchableOpacity
+            style={[styles.tab, tab === 'conversations' && styles.tabActive]}
+            onPress={() => setTab('conversations')}>
+            <Text style={[styles.tabText, tab === 'conversations' && styles.tabTextActive]}>对话历史</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, tab === 'longterm' && styles.tabActive]}
+            onPress={() => { setTab('longterm'); loadLongterm() }}>
+            <Text style={[styles.tabText, tab === 'longterm' && styles.tabTextActive]}>长期记忆</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {showDetail ? (
         <View style={styles.detailContainer}>
           <Text style={styles.detailTitle}>{convs.find(c => c.id === showDetail)?.title || '对话'}</Text>
@@ -82,6 +117,35 @@ export function MemoryScreen({ navigation }: { navigation?: any }) {
             <Text style={styles.detailDeleteText}>删除此对话</Text>
           </TouchableOpacity>
         </View>
+      ) : tab === 'longterm' ? (
+        longtermMemories.length === 0 ? (
+          <View style={styles.empty}>
+            <Text style={styles.emptyIcon}>🧠</Text>
+            <Text style={styles.emptyTitle}>暂无长期记忆</Text>
+            <Text style={styles.emptyText}>
+              AI 会在对话中自动记住你的偏好、重要事实和行为模式，显示在这里
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={longtermMemories}
+            keyExtractor={item => item.id}
+            renderItem={({ item }) => (
+              <View style={styles.memItem}>
+                <View style={{ flex: 1 }}>
+                  <View style={styles.memTags}>
+                    <Text style={styles.memCategory}>{item.category}</Text>
+                    <Text style={styles.memImportance}>{'★'.repeat(Math.min(item.importance, 5))}</Text>
+                  </View>
+                  <Text style={styles.memContent} numberOfLines={3}>{item.content}</Text>
+                </View>
+                <TouchableOpacity onPress={() => deleteMemory(item.id)} style={styles.memDelete}>
+                  <Text style={styles.memDeleteText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          />
+        )
       ) : convs.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyIcon}>🧠</Text>
@@ -144,4 +208,27 @@ const styles = StyleSheet.create({
   detailStats: { color: '#888', fontSize: 14, marginBottom: 24 },
   detailDeleteBtn: { padding: 14, backgroundColor: '#2a1010', borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: '#ef444430' },
   detailDeleteText: { color: '#ef4444', fontSize: 14, fontWeight: '600' },
+
+  tabBar: {
+    flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#1f1f1f',
+  },
+  tab: { flex: 1, paddingVertical: 12, alignItems: 'center' },
+  tabActive: { borderBottomWidth: 2, borderBottomColor: '#7c3aed' },
+  tabText: { color: '#666', fontSize: 14, fontWeight: '500' },
+  tabTextActive: { color: '#7c3aed', fontWeight: '600' },
+
+  memItem: {
+    flexDirection: 'row', alignItems: 'flex-start', padding: 14,
+    borderBottomWidth: 1, borderBottomColor: '#1a1a1a', gap: 8,
+  },
+  memTags: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  memCategory: {
+    color: '#7c3aed', fontSize: 11, fontWeight: '600', textTransform: 'uppercase',
+    backgroundColor: '#7c3aed20', paddingHorizontal: 8, paddingVertical: 2,
+    borderRadius: 4, overflow: 'hidden',
+  },
+  memImportance: { color: '#f59e0b', fontSize: 12 },
+  memContent: { color: '#ccc', fontSize: 13, lineHeight: 20 },
+  memDelete: { padding: 6 },
+  memDeleteText: { color: '#555', fontSize: 14 },
 })

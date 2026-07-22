@@ -171,8 +171,105 @@ export const ALL_TOOL_SCHEMAS: ToolLLMSchema[] = [
   WEB_FETCH_SCHEMA,
 ]
 
+/** 全量工具列表 */
+export const ALL_TOOL_SCHEMAS: ToolLLMSchema[] = [
+  READ_FILE_SCHEMA,
+  WRITE_FILE_SCHEMA,
+  EXECUTE_SCHEMA,
+  GLOB_SCHEMA,
+  GREP_SCHEMA,
+  WEB_SEARCH_SCHEMA,
+  WEB_FETCH_SCHEMA,
+  REMEMBER_SCHEMA,
+  RECALL_SCHEMA,
+  GET_CONFIG_SCHEMA,
+  UPDATE_CONFIG_SCHEMA,
+  MEMORY_STATS_SCHEMA,
+]
+
+/* ── 记忆工具 ── */
+
+export const REMEMBER_SCHEMA: ToolLLMSchema = {
+  type: 'function',
+  function: {
+    name: 'remember',
+    description: '记住一条信息到长期记忆。适用于：用户偏好、重要事实、行为模式。跨会话持久化。',
+    parameters: {
+      type: 'object',
+      properties: {
+        content: { type: 'string', description: '要记住的内容' },
+        category: {
+          type: 'string',
+          enum: ['user_info', 'preference', 'fact', 'skill', 'conversation', 'error_fix', 'behavior'],
+          description: '记忆分类',
+        },
+        importance: {
+          type: 'number',
+          description: '重要性 1-10，10最重要，默认5',
+        },
+        keywords: {
+          type: 'string',
+          description: '逗号分隔的关键词，用于检索',
+        },
+      },
+      required: ['content', 'category'],
+    },
+  },
+}
+
+export const RECALL_SCHEMA: ToolLLMSchema = {
+  type: 'function',
+  function: {
+    name: 'recall',
+    description: '从长期记忆中检索相关信息。当用户提到过去讨论过的话题、偏好或决定时调用。',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: '搜索关键词，尽量具体' },
+        maxResults: { type: 'number', description: '返回结果数，默认5' },
+      },
+      required: ['query'],
+    },
+  },
+}
+
+export const GET_CONFIG_SCHEMA: ToolLLMSchema = {
+  type: 'function',
+  function: {
+    name: 'get_config',
+    description: '读取AI助手的当前配置参数（模型、温度、Token预算等）',
+    parameters: { type: 'object', properties: {} },
+  },
+}
+
+export const UPDATE_CONFIG_SCHEMA: ToolLLMSchema = {
+  type: 'function',
+  function: {
+    name: 'update_config',
+    description: '修改AI助手的配置参数。修改需要用户确认生效。',
+    parameters: {
+      type: 'object',
+      properties: {
+        model: { type: 'string', description: '模型名称，如 oc/deepseek-v4-flash' },
+        temperature: { type: 'number', description: '温度 0.1-2.0，越低越精确' },
+        maxTokens: { type: 'number', description: '最大 Token 数' },
+        thinkingEnabled: { type: 'boolean', description: '是否启用深度思考' },
+      },
+    },
+  },
+}
+
+export const MEMORY_STATS_SCHEMA: ToolLLMSchema = {
+  type: 'function',
+  function: {
+    name: 'get_memory_stats',
+    description: '查看记忆系统统计信息（总条目数、分类分布）',
+    parameters: { type: 'object', properties: {} },
+  },
+}
+
 /** 只读工具（不需要确认） */
-export const READONLY_TOOLS = new Set(['read', 'glob', 'grep', 'web_search', 'web_fetch'])
+export const READONLY_TOOLS = new Set(['read', 'glob', 'grep', 'web_search', 'web_fetch', 'recall', 'get_config', 'get_memory_stats'])
 
 /** 写入工具（需要确认） */
 export const WRITE_TOOLS = new Set(['write', 'execute'])

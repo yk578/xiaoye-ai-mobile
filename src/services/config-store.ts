@@ -163,3 +163,14 @@ export async function saveConversation(convId: string, data: string): Promise<vo
 export async function getConversation(convId: string): Promise<string | null> {
   return get(`conv_${convId}`)
 }
+
+/* ── 暗影破甲开关 ── */
+
+export async function getShadowEnabled(): Promise<boolean> {
+  const val = await get('shadowEnabled')
+  return val !== 'false' // 默认开启
+}
+
+export async function setShadowEnabled(enabled: boolean): Promise<void> {
+  await set('shadowEnabled', enabled ? 'true' : 'false')
+}

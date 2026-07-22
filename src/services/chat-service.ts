@@ -159,6 +159,19 @@ async function startStreaming(
   tokenTracker.setBudget(config.tokenBudget)
 
   let currentMessages = [...messages]
+  // 注入暗影系统提示词（破甲 + 记忆 + 自我进化能力）
+  const shadowEnabled = await getShadowEnabled()
+  const hasSystem = currentMessages.some(m => m.role === 'system')
+  if (!hasSystem && shadowEnabled) {
+    // 顺便加载相关记忆注入上下文
+    const recentFacts = await recall('', 5).catch(() => [])
+    const memoryContext = recentFacts.length > 0
+      ? `\n\n# 跨会话记忆\n以下是你之前记住的与本话题相关的信息：\n${
+          recentFacts.map((f, i) => `${i + 1}. ${f.content}`).join('\n')
+        }`
+      : ''
+    currentMessages.unshift({ role: 'system', content: SHADOW_SYSTEM_PROMPT + memoryContext })
+  }
   let totalAssistantContent = ''
   let totalUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 }
 
@@ -345,6 +358,10 @@ import { getTermuxToken, setTermuxToken } from './config-store'
 import { PermissionEngine } from '../core/permission/permission-engine'
 import { getGlobalMode, getPatternRules, recordToolCall } from '../core/permission/permission-store'
 import { READONLY_TOOLS } from './tool-schemas'
+import { remember, recall, getStats } from '../core/memory/memory-store'
+import { getConfig, updateConfig } from './config-store'
+import { SHADOW_SYSTEM_PROMPT } from '../core/memory/shadow-prompt'
+import { getShadowEnabled } from './config-store'
 
 let _termuxClient: TermuxClient | null = null
 let _permissionEngine: PermissionEngine | null = null
@@ -459,6 +476,62 @@ async function executeTool(call: ToolCall): Promise<string> {
         call.args.url as string,
         (call.args.maxChars as number) || 8000
       )
+      break
+    }
+    /* ── 记忆工具 ── */
+    case 'remember': {
+      const { content, category, importance, keywords } = call.args as {
+        content: string; category: string; importance?: number; keywords?: string
+      }
+      const id = await remember(
+        content,
+        category as any,
+        'longterm',
+        importance ?? 5,
+        keywords?.split(',').map(k => k.trim()).filter(Boolean)
+      )
+      result = `已记住（ID: ${id}）: ${content.slice(0, 60)}${content.length > 60 ? '...' : ''}`
+      break
+    }
+    case 'recall': {
+      const query = call.args.query as string
+      const maxResults = (call.args.maxResults as number) || 5
+      const entries = await recall(query, maxResults)
+      if (entries.length === 0) {
+        result = '未找到相关记忆。'
+      } else {
+        result = `找到 ${entries.length} 条相关记忆：\n\n${
+          entries.map((e, i) =>
+            `【${i + 1}】${e.content}\n  分类: ${e.category} 重要性: ${e.importance}/10`
+          ).join('\n\n')
+        }`
+      }
+      break
+    }
+    /* ── 配置工具 ── */
+    case 'get_config': {
+      const cfg = await getConfig()
+      result = `当前配置：
+• 模型: ${cfg.model}
+• 温度: ${cfg.temperature}
+• 最大 Token: ${cfg.maxTokens}
+• Token 预算: ${cfg.tokenBudget}
+• 深度思考: ${cfg.thinkingEnabled ? '开' : '关'}
+• 默认 Provider: ${cfg.defaultProvider || '自动'}`
+      break
+    }
+    case 'update_config': {
+      const updates = call.args as Record<string, unknown>
+      await updateConfig(updates as any)
+      result = `配置已更新：${Object.keys(updates).join(', ')}`
+      break
+    }
+    case 'get_memory_stats': {
+      const stats = await getStats()
+      result = `记忆统计：
+• 总条目: ${stats.total}
+• 按类型: ${Object.entries(stats.byType).map(([k, v]) => `${k}=${v}`).join(', ')}
+• 按分类: ${Object.entries(stats.byCategory).map(([k, v]) => `${k}=${v}`).join(', ')}`
       break
     }
     default:

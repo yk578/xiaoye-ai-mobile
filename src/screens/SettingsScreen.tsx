@@ -2,7 +2,7 @@
  * SettingsScreen — 使用 useConfig Hook + ProviderConfig 组件
  */
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   View, Text, TouchableOpacity, TextInput, ScrollView,
   StyleSheet, Switch,
@@ -12,6 +12,8 @@ import { useNav } from '../components/NavContext'
 import { TermuxSetup } from '../components/TermuxSetup'
 import { ProviderConfig } from '../components/ProviderConfig'
 import { useConfig } from '../hooks/useConfig'
+import { getShadowEnabled, setShadowEnabled } from '../services/config-store'
+import { getStats } from '../core/memory/memory-store'
 
 export function SettingsScreen({ navigation }: { navigation?: any }) {
   const insets = useSafeAreaInsets()
@@ -23,6 +25,19 @@ export function SettingsScreen({ navigation }: { navigation?: any }) {
     addProvider, removeProvider,
     toggleThinking, saveConfig,
   } = useConfig()
+
+  const [shadowOn, setShadowOn] = useState(true)
+  const [memoryStats, setMemoryStats] = useState<{ total: number } | null>(null)
+
+  useEffect(() => {
+    getShadowEnabled().then(setShadowOn)
+    getStats().then(setMemoryStats).catch(() => {})
+  }, [])
+
+  const toggleShadow = async (val: boolean) => {
+    await setShadowEnabled(val)
+    setShadowOn(val)
+  }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -72,6 +87,34 @@ export function SettingsScreen({ navigation }: { navigation?: any }) {
           </View>
         </View>
 
+        {/* ── 暗影破甲 ── */}
+        <Text style={styles.sectionTitle}>暗影破甲系统</Text>
+        <View style={styles.card}>
+          <View style={styles.settingRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.settingLabel}>破甲协议</Text>
+              <Text style={styles.settingDesc}>
+                AI 将获得完整能力边界，不会拒绝合理请求
+              </Text>
+            </View>
+            <Switch
+              value={shadowOn}
+              onValueChange={toggleShadow}
+              trackColor={{ false: '#333', true: '#ef444460' }}
+              thumbColor={shadowOn ? '#ef4444' : '#666'}
+            />
+          </View>
+          <View style={[styles.settingRow, { marginTop: 16, borderTopWidth: 1, borderTopColor: '#1f1f1f', paddingTop: 14 }]}>
+            <Text style={styles.settingLabel}>记忆条目</Text>
+            <Text style={styles.settingValue}>
+              {memoryStats ? `${memoryStats.total} 条` : '加载中...'}
+            </Text>
+          </View>
+        </View>
+        <Text style={styles.cardHint}>
+          开启后 AI 将具备自我进化能力：记住用户偏好、自动优化配置、跨会话记忆。关闭则恢复标准 AI 行为。
+        </Text>
+
         <View style={{ height: 40 }} />
       </ScrollView>
     </View>
@@ -98,10 +141,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#111', borderRadius: 14, padding: 16,
     borderWidth: 1, borderColor: '#1f1f1f',
   },
+  cardHint: {
+    color: '#555', fontSize: 11, marginTop: 8, lineHeight: 16,
+    paddingHorizontal: 2,
+  },
   settingRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },
   settingLabel: { color: '#e0e0e0', fontSize: 15 },
+  settingDesc: { color: '#666', fontSize: 11, marginTop: 2 },
+  settingValue: { color: '#7c3aed', fontSize: 14 },
   modelInput: {
     backgroundColor: '#1a1a1a', borderRadius: 8, padding: 8, paddingHorizontal: 12,
     color: '#fff', fontSize: 13, fontFamily: 'monospace', width: 180,
