@@ -42,26 +42,32 @@ export function TermuxSetup() {
     setConnected(false)
 
     try {
-      // 用空 token 先探测
+      // 扫描 WiFi 子网，服务端 /ping 和 /info 已免认证
       const servers = await discoverServers('', {
         onProgress: (ip) => setPhoneIp(ip),
       })
 
       if (servers.length === 0) {
-        Alert.alert('未找到服务器', '请确认：\n1. 手机已安装 Termux\n2. 服务器已启动\n3. 手机和电脑/车机在同一 WiFi')
+        Alert.alert('未找到服务器', '请确认：\n1. Termux 已安装且服务器已启动\n2. 手机在同一 WiFi')
         return
       }
 
       const server = servers[0]
       setPhoneIp(server.ip)
 
-      // 用服务器 IP 获取 info（获取实际 token）
+      // 从 /info 获取实际 token
       const client = new TermuxClient('', `http://${server.ip}:2324`)
       const info = await client.getServerInfo()
-      if (info) {
-        Alert.alert('发现服务器', `IP: ${server.ip}:2324\nToken: ${info.token ? '已获取' : '需手动输入 Token'}`)
+      if (info && info.token) {
+        setTokenInput(info.token)
+        await Promise.all([
+          setTermuxHost(server.ip),
+          setTermuxToken(info.token),
+        ])
+        setConnected(true)
+        Alert.alert('✅ 连接成功', `已自动连上 Termux 服务器 (${server.ip}:2324)`)
       } else {
-        Alert.alert('发现服务器', `IP: ${server.ip}:2324\n请手动输入 Token 后点击「测试连接」`)
+        Alert.alert('发现服务器', `IP: ${server.ip}:2324\n请手动输入 Token`)
       }
     } catch (err) {
       Alert.alert('自动发现失败', (err as Error).message)

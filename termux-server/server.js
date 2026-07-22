@@ -125,29 +125,30 @@ async function handleRequest(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Auth-Token')
   if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return }
 
+  const url = new URL(req.url, `http://localhost:${PORT}`)
+
+  // /ping 和 /info 免认证（用于自动发现）
+  if (url.pathname === '/ping') {
+    return json(res, 200, { status: 'ok', timestamp: new Date().toISOString() })
+  }
+  if (url.pathname === '/info') {
+    return json(res, 200, {
+      version: 2,
+      ip: getLocalIP(),
+      port: PORT,
+      token: AUTH_TOKEN,
+      hostname: os.hostname() || '',
+      home: HOME,
+    })
+  }
+
   if (req.headers['x-auth-token'] !== AUTH_TOKEN) {
     return json(res, 401, { error: 'Unauthorized' })
   }
 
-  const url = new URL(req.url, `http://localhost:${PORT}`)
   const method = req.method
 
   try {
-    // 健康检查
-    if (url.pathname === '/ping') {
-      return json(res, 200, { status: 'ok', timestamp: new Date().toISOString() })
-    }
-
-    // 获取服务器信息（含 IP）
-    if (url.pathname === '/info') {
-      return json(res, 200, {
-        version: 2,
-        ip: getLocalIP(),
-        port: PORT,
-        hostname: os.hostname() || '',
-        home: HOME,
-      })
-    }
 
     // 执行命令
     if (url.pathname === '/exec' && method === 'POST') {

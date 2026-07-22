@@ -31,6 +31,7 @@ export interface ServerInfo {
   port: number
   hostname: string
   home: string
+  token?: string
 }
 
 export class TermuxClient {
