@@ -94,10 +94,12 @@ export function TermuxSetup() {
     const ip = phoneIp.trim()
     const token = tokenInput.trim()
 
-    await Promise.all([
-      setTermuxHost(ip),
-      setTermuxToken(token),
-    ])
+    try {
+      await Promise.all([
+        setTermuxHost(ip),
+        setTermuxToken(token),
+      ])
+    } catch {}
 
     const client = new TermuxClient(token, `http://${ip}:2324`)
     const ok = await client.ping()
@@ -118,12 +120,13 @@ export function TermuxSetup() {
       Alert.alert('请填写完整', '请输入 IP 地址和 Token')
       return
     }
-    await Promise.all([
-      setTermuxHost(phoneIp.trim()),
-      setTermuxToken(tokenInput.trim()),
-    ])
+    try {
+      await Promise.all([
+        setTermuxHost(phoneIp.trim()),
+        setTermuxToken(tokenInput.trim()),
+      ])
+    } catch {}
     setConnected(true)
-    Alert.alert('✅ 已保存', '连接配置已保存，可以开始对话')
   }, [phoneIp, tokenInput])
 
   const copyCommand = useCallback(async () => {
