@@ -1,74 +1,53 @@
 /**
- * 配置存储 — 基于 expo-file-system（JSON 文件）
+ * 配置存储 — expo-file-system 极简版
  *
- * 替换 expo-sqlite，避开 Android 原生模块 NPE。
- * 写入做原子交换，防止断电/崩溃导致文件损坏。
+ * 不用 getInfoAsync（已弃用），直接试读写。
+ * 写失败自动降级到内存缓存。
  */
 
-/**
- * 按 deprecation 提示导入 legacy API，避免新版本 getInfoAsync 抛异常。
- * 同时做两段式降级：文件写入失败 → 内存缓存，保证关键操作不崩。
- */
-import * as FileSystem from 'expo-file-system/legacy'
+import * as FileSystem from 'expo-file-system'
 import type { AppConfig, ProviderStoreEntry } from '../types'
 
 /* ── 文件路径 ── */
 
 const CONFIG_DIR = `${FileSystem.documentDirectory}xiaoye-config/`
 const DATA_FILE = `${CONFIG_DIR}data.json`
-const TMP_FILE = `${CONFIG_DIR}data.json.tmp`
 
-/** 内存缓存 + 持久化标识 */
+/** 内存缓存 */
 let cache: Record<string, string> | null = null
 let storageOk = true
-
-async function ensureDir(): Promise<boolean> {
-  try {
-    const info = await FileSystem.getInfoAsync(CONFIG_DIR)
-    if (!info.exists) {
-      await FileSystem.makeDirectoryAsync(CONFIG_DIR, { intermediates: true })
-    }
-    return true
-  } catch {
-    storageOk = false
-    return false
-  }
-}
 
 async function loadAll(): Promise<Record<string, string>> {
   if (cache) return cache
   cache = {}
   try {
     const raw = await FileSystem.readAsStringAsync(DATA_FILE)
-    cache = JSON.parse(raw)
-    storageOk = true
-  } catch {
-    cache = {}
-  }
+    cache = JSON.parse(raw) as Record<string, string>
+  } catch {}
   return cache!
 }
 
 async function flush(): Promise<void> {
   if (!cache) return
   const json = JSON.stringify(cache)
-  // 先试临时文件 -> move 原子交换
   try {
-    await FileSystem.writeAsStringAsync(TMP_FILE, json)
-    await FileSystem.moveAsync({ from: TMP_FILE, to: DATA_FILE })
-    storageOk = true
-    return
-  } catch {}
-  // 降级：直接写目标文件
-  try {
+    // 先确保目录存在（writeAsStringAsync 在新版 expo-file-system 会自动创建目录）
     await FileSystem.writeAsStringAsync(DATA_FILE, json)
     storageOk = true
-    return
-  } catch {
-    storageOk = false
+  } catch (e) {
+    // 如果直接写失败，试试先创建目录再写
+    try {
+      const dirInfo = await FileSystem.getInfoAsync(CONFIG_DIR)
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(CONFIG_DIR, { intermediates: true })
+      }
+      await FileSystem.writeAsStringAsync(DATA_FILE, json)
+      storageOk = true
+    } catch {
+      storageOk = false
+    }
   }
 }
-
-/* ── 通用 KV ── */
 
 async function get(key: string): Promise<string | null> {
   const all = await loadAll()
@@ -91,7 +70,7 @@ const DEFAULTS: Omit<AppConfig, 'apiKey'> = {
   thinkingEnabled: false,
 }
 
-/* ── App 配置读写 ── */
+/* ── App 配置 ── */
 
 export async function getConfig(): Promise<AppConfig> {
   const raw = await get('appConfig')
@@ -114,7 +93,7 @@ export async function hasApiKey(): Promise<boolean> {
   return config.apiKey.length > 0
 }
 
-/* ── Provider 配置 ── */
+/* ── Provider ── */
 
 export async function getProviderConfigs(): Promise<ProviderStoreEntry[]> {
   const raw = await get('providers')
@@ -138,7 +117,7 @@ export async function removeProviderConfig(name: string): Promise<void> {
   await setProviderConfigs(configs)
 }
 
-/* ── Termux Token ── */
+/* ── Termux Token / Host ── */
 
 export async function getTermuxToken(): Promise<string | null> {
   return get('termuxToken')
@@ -148,8 +127,6 @@ export async function setTermuxToken(token: string): Promise<void> {
   await set('termuxToken', token)
 }
 
-/* ── Termux 手机 IP ── */
-
 export async function getTermuxHost(): Promise<string> {
   return (await get('termuxHost')) || '127.0.0.1'
 }
@@ -158,7 +135,7 @@ export async function setTermuxHost(ip: string): Promise<void> {
   await set('termuxHost', ip)
 }
 
-/* ── 许可存储 ── */
+/* ── 许可 / 对话 ── */
 
 export async function getLicenseData(): Promise<string | null> {
   return get('licenseData')
@@ -167,8 +144,6 @@ export async function getLicenseData(): Promise<string | null> {
 export async function setLicenseData(data: string): Promise<void> {
   await set('licenseData', data)
 }
-
-/* ── 对话存储 ── */
 
 export async function saveConversation(convId: string, data: string): Promise<void> {
   await set(`conv_${convId}`, data)

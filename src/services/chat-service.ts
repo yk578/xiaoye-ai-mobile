@@ -54,11 +54,15 @@ export function setCallbacks(cb: ChatCallbacks): void {
 let providerInitPromise: Promise<void> | null = null
 
 async function ensureProvider(): Promise<void> {
-  if (registry) return
-  if (providerInitPromise) return providerInitPromise
+  if (registry && router) return
+  if (providerInitPromise && registry && router) return providerInitPromise
 
   providerInitPromise = (async () => {
-    registry = ProviderRegistry.getInstance()
+    // 即使 registry 已经存在也重新加载 Provider 列表
+    // 解决 先配空配置 → 再配 Provider 的场景
+    if (!registry) {
+      registry = ProviderRegistry.getInstance()
+    }
     const configs = await getProviderConfigs()
     if (configs.length > 0) {
       for (const cfg of configs) {
@@ -77,22 +81,10 @@ async function ensureProvider(): Promise<void> {
       if (config.defaultProvider) {
         try { registry.setDefault(config.defaultProvider) } catch {}
       }
+    }
+
+    if (registry.hasProvider()) {
       router = new WorkloadRouter(registry)
-    } else {
-      const config = await getConfig()
-      if (config.apiKey) {
-        const p = new OpenAICompatibleProvider({
-          name: 'deepseek',
-          baseUrl: 'https://api.deepseek.com',
-          apiKey: config.apiKey,
-          defaultModel: config.model || 'deepseek-v4-pro',
-          defaultTemperature: 0.7,
-          defaultMaxTokens: 4096,
-        })
-        registry.register('deepseek', p)
-        registry.setDefault('deepseek')
-        router = new WorkloadRouter(registry)
-      }
     }
   })()
 
