@@ -8,7 +8,6 @@ import {
   StyleSheet, KeyboardAvoidingView, Platform,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { VideoBackground } from '../components/VideoBackground'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { MarkdownRenderer } from '../components/MarkdownRenderer'
 import { InputBar } from '../components/InputBar'
@@ -73,7 +72,7 @@ export function ChatScreen({ navigation }: { navigation?: any }) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       <ErrorBoundary fallback={<View style={styles.errorFallback} />}>
-        <VideoBackground />
+        <View style={styles.errorFallback} />
       </ErrorBoundary>
 
       {/* 顶部栏 */}
