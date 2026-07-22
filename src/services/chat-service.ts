@@ -11,9 +11,12 @@ import { WorkloadRouter } from '../core/provider/workload-router'
 import { estimateTokens, getModelContextWindow } from '../core/provider/model-context'
 import { TokenBudgetTracker } from '../core/memory/token-budget'
 import { preprocessToolOutput } from '../core/memory/token-preprocessor'
-import { getConfig, getProviderConfigs } from './config-store'
+import { getConfig, getProviderConfigs, getShadowEnabled, updateConfig } from './config-store'
 import { ProviderError, AuthStyle } from '../types'
 import type { LLMProvider, StreamChunk, ChatOptions, ToolCall } from '../types'
+import { READONLY_TOOLS } from './tool-schemas'
+import { remember, recall, getStats } from '../core/memory/memory-store'
+import { SHADOW_SYSTEM_PROMPT } from '../core/memory/shadow-prompt'
 
 /* ── 回调接口 ── */
 
@@ -89,9 +92,6 @@ async function ensureProvider(): Promise<void> {
 
   return providerInitPromise
 }
-
-// 静默捕获未处理的 rejection（promise 缓存场景安全兜底）
-providerInitPromise?.catch(() => {})
 
 /* ── 发送消息 ── */
 
@@ -357,11 +357,6 @@ import { TermuxClient, generateToken } from './termux-client'
 import { getTermuxToken, setTermuxToken } from './config-store'
 import { PermissionEngine } from '../core/permission/permission-engine'
 import { getGlobalMode, getPatternRules, recordToolCall } from '../core/permission/permission-store'
-import { READONLY_TOOLS } from './tool-schemas'
-import { remember, recall, getStats } from '../core/memory/memory-store'
-import { getConfig, updateConfig } from './config-store'
-import { SHADOW_SYSTEM_PROMPT } from '../core/memory/shadow-prompt'
-import { getShadowEnabled } from './config-store'
 
 let _termuxClient: TermuxClient | null = null
 let _permissionEngine: PermissionEngine | null = null

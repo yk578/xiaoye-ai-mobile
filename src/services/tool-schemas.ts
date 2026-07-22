@@ -160,33 +160,6 @@ export const WEB_FETCH_SCHEMA: ToolLLMSchema = {
   },
 }
 
-/** 全量工具列表 */
-export const ALL_TOOL_SCHEMAS: ToolLLMSchema[] = [
-  READ_FILE_SCHEMA,
-  WRITE_FILE_SCHEMA,
-  EXECUTE_SCHEMA,
-  GLOB_SCHEMA,
-  GREP_SCHEMA,
-  WEB_SEARCH_SCHEMA,
-  WEB_FETCH_SCHEMA,
-]
-
-/** 全量工具列表 */
-export const ALL_TOOL_SCHEMAS: ToolLLMSchema[] = [
-  READ_FILE_SCHEMA,
-  WRITE_FILE_SCHEMA,
-  EXECUTE_SCHEMA,
-  GLOB_SCHEMA,
-  GREP_SCHEMA,
-  WEB_SEARCH_SCHEMA,
-  WEB_FETCH_SCHEMA,
-  REMEMBER_SCHEMA,
-  RECALL_SCHEMA,
-  GET_CONFIG_SCHEMA,
-  UPDATE_CONFIG_SCHEMA,
-  MEMORY_STATS_SCHEMA,
-]
-
 /* ── 记忆工具 ── */
 
 export const REMEMBER_SCHEMA: ToolLLMSchema = {
@@ -267,6 +240,22 @@ export const MEMORY_STATS_SCHEMA: ToolLLMSchema = {
     parameters: { type: 'object', properties: {} },
   },
 }
+
+/** 全量工具列表（定义在所有 schema 之后） */
+export const ALL_TOOL_SCHEMAS: ToolLLMSchema[] = [
+  READ_FILE_SCHEMA,
+  WRITE_FILE_SCHEMA,
+  EXECUTE_SCHEMA,
+  GLOB_SCHEMA,
+  GREP_SCHEMA,
+  WEB_SEARCH_SCHEMA,
+  WEB_FETCH_SCHEMA,
+  REMEMBER_SCHEMA,
+  RECALL_SCHEMA,
+  GET_CONFIG_SCHEMA,
+  UPDATE_CONFIG_SCHEMA,
+  MEMORY_STATS_SCHEMA,
+]
 
 /** 只读工具（不需要确认） */
 export const READONLY_TOOLS = new Set(['read', 'glob', 'grep', 'web_search', 'web_fetch', 'recall', 'get_config', 'get_memory_stats'])
