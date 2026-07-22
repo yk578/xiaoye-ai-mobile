@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Network Security Configuration
+  允许明文 HTTP 访问局域网 IP 和 localhost，解决同一设备上
+  App → Termux 服务器的通信被 Android 防火墙/cleartext 策略拦截的问题。
+-->
+<network-security-config>
+  <base-config cleartextTrafficPermitted="true">
+    <trust-anchors>
+      <certificates src="system" />
+    </trust-anchors>
+  </base-config>
+  <!-- 明确允许局域网 IP 段和 localhost -->
+  <domain-config cleartextTrafficPermitted="true">
+    <domain includeSubdomains="true">127.0.0.1</domain>
+    <domain includeSubdomains="true">localhost</domain>
+    <domain includeSubdomains="true">192.168.0.0/16</domain>
+    <domain includeSubdomains="true">10.0.0.0/8</domain>
+    <domain includeSubdomains="true">172.16.0.0/12</domain>
+  </domain-config>
+</network-security-config>
