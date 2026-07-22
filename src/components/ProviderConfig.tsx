@@ -23,16 +23,17 @@ export function ProviderConfig({ providers, onAdd, onRemove }: ProviderConfigPro
   })
 
   const handleAdd = async () => {
-    if (!form.name || !form.baseUrl || !form.apiKey) {
-      Alert.alert('请填写完整信息', '名称、接口地址和 API 密钥都是必填的')
+    if (!form.name || !form.baseUrl) {
+      Alert.alert('请填写完整信息', '名称和接口地址是必填的')
       return
     }
     await onAdd({
       ...form,
-      defaultModel: form.defaultModel || 'deepseek-v4-pro',
+      defaultModel: form.defaultModel || 'oc/deepseek-v4-flash',
     })
     setShowForm(false)
     setForm({ name: '', baseUrl: '', apiKey: '', defaultModel: '' })
+    Alert.alert('✅ Provider 已添加', `"${form.name}" 已保存，可以开始对话了`)
   }
 
   return (

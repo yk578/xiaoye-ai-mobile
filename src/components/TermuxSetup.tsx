@@ -109,6 +109,20 @@ export function TermuxSetup() {
     )
   }, [phoneIp, tokenInput])
 
+  /** 保存连接配置 */
+  const handleSaveConnection = useCallback(async () => {
+    if (!phoneIp.trim() || !tokenInput.trim()) {
+      Alert.alert('请填写完整', '请输入 IP 地址和 Token')
+      return
+    }
+    await Promise.all([
+      setTermuxHost(phoneIp.trim()),
+      setTermuxToken(tokenInput.trim()),
+    ])
+    setConnected(true)
+    Alert.alert('✅ 已保存', '连接配置已保存，可以开始对话')
+  }, [phoneIp, tokenInput])
+
   const copyCommand = useCallback(async () => {
     const cmd = 'curl -sL https://raw.githubusercontent.com/yk578/xiaoye-ai-mobile/master/termux-server/setup.sh | bash'
     await Clipboard.setStringAsync(cmd)
@@ -176,6 +190,13 @@ export function TermuxSetup() {
           autoCorrect={false}
           secureTextEntry
         />
+      </View>
+
+      {/* ── 手动保存按钮 ── */}
+      <View style={s.saveRow}>
+        <TouchableOpacity style={s.saveConnBtn} onPress={handleSaveConnection}>
+          <Text style={s.saveConnBtnText}>💾 保存连接</Text>
+        </TouchableOpacity>
       </View>
 
       {/* ── 一键安装 ── */}
@@ -280,4 +301,10 @@ const s = StyleSheet.create({
     paddingLeft: 40,
   },
   link: { color: '#7c3aed', fontSize: 13, fontWeight: '600' },
+  saveRow: { marginBottom: 16 },
+  saveConnBtn: {
+    backgroundColor: '#7c3aed', borderRadius: 14, padding: 16,
+    alignItems: 'center',
+  },
+  saveConnBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 })
