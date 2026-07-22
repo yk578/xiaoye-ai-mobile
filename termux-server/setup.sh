@@ -68,7 +68,7 @@ cat > "$SERVER_DIR/start.sh" << 'STARTEOF'
 #!/bin/bash
 DIR=~/xiaoye-server
 echo "🚀 启动 9router（免费 AI 模型）..."
-proot -0 9router --port 7777 > /dev/null 2>&1 &
+proot -0 9router --port 7777 --host 127.0.0.1 > /dev/null 2>&1 &
 sleep 5
 echo "🚀 启动小叶服务器..."
 nohup node "$DIR/server.js" > /dev/null 2>&1 &
@@ -116,11 +116,12 @@ if curl -s --max-time 2 http://127.0.0.1:7777 >/dev/null 2>&1; then
 else
   # Termux 上 os.networkInterfaces() 触发 SELinux netlink 限制
   # 用 proot 绕过（proot 提供 /proc 和 netlink 访问）
+  # --host 127.0.0.1 阻止 9router 检测到网络暴露而主动退出
   if command -v proot &>/dev/null; then
-    nohup proot -0 9router --port 7777 > "$SERVER_DIR/9router.log" 2>&1 &
+    nohup proot -0 9router --port 7777 --host 127.0.0.1 --host 127.0.0.1 > "$SERVER_DIR/9router.log" 2>&1 &
   else
     # 没有 proot，尝试直接启动（可能也 work，取决 Node.js 版本）
-    nohup 9router --port 7777 > "$SERVER_DIR/9router.log" 2>&1 &
+    nohup 9router --port 7777 --host 127.0.0.1 > "$SERVER_DIR/9router.log" 2>&1 &
   fi
   # 9router 启动可能稍慢，等 10 秒
   WAIT=0
