@@ -5,7 +5,11 @@
  * 写入做原子交换，防止断电/崩溃导致文件损坏。
  */
 
-import * as FileSystem from 'expo-file-system'
+/**
+ * 按 deprecation 提示导入 legacy API，避免新版本 getInfoAsync 抛异常。
+ * 同时做两段式降级：文件写入失败 → 内存缓存，保证关键操作不崩。
+ */
+import * as FileSystem from 'expo-file-system/legacy'
 import type { AppConfig, ProviderStoreEntry } from '../types'
 
 /* ── 文件路径 ── */
@@ -14,13 +18,20 @@ const CONFIG_DIR = `${FileSystem.documentDirectory}xiaoye-config/`
 const DATA_FILE = `${CONFIG_DIR}data.json`
 const TMP_FILE = `${CONFIG_DIR}data.json.tmp`
 
-/** 内存缓存，减少重复读文件 */
+/** 内存缓存 + 持久化标识 */
 let cache: Record<string, string> | null = null
+let storageOk = true
 
-async function ensureDir(): Promise<void> {
-  const info = await FileSystem.getInfoAsync(CONFIG_DIR)
-  if (!info.exists) {
-    await FileSystem.makeDirectoryAsync(CONFIG_DIR, { intermediates: true })
+async function ensureDir(): Promise<boolean> {
+  try {
+    const info = await FileSystem.getInfoAsync(CONFIG_DIR)
+    if (!info.exists) {
+      await FileSystem.makeDirectoryAsync(CONFIG_DIR, { intermediates: true })
+    }
+    return true
+  } catch {
+    storageOk = false
+    return false
   }
 }
 
@@ -30,8 +41,8 @@ async function loadAll(): Promise<Record<string, string>> {
   try {
     const raw = await FileSystem.readAsStringAsync(DATA_FILE)
     cache = JSON.parse(raw)
+    storageOk = true
   } catch {
-    // 文件不存在或损坏，用空对象
     cache = {}
   }
   return cache!
@@ -39,11 +50,22 @@ async function loadAll(): Promise<Record<string, string>> {
 
 async function flush(): Promise<void> {
   if (!cache) return
-  await ensureDir()
   const json = JSON.stringify(cache)
-  // 先写临时文件，再 rename（原子交换）
-  await FileSystem.writeAsStringAsync(TMP_FILE, json)
-  await FileSystem.moveAsync({ from: TMP_FILE, to: DATA_FILE })
+  // 先试临时文件 -> move 原子交换
+  try {
+    await FileSystem.writeAsStringAsync(TMP_FILE, json)
+    await FileSystem.moveAsync({ from: TMP_FILE, to: DATA_FILE })
+    storageOk = true
+    return
+  } catch {}
+  // 降级：直接写目标文件
+  try {
+    await FileSystem.writeAsStringAsync(DATA_FILE, json)
+    storageOk = true
+    return
+  } catch {
+    storageOk = false
+  }
 }
 
 /* ── 通用 KV ── */

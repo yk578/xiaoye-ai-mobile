@@ -60,10 +60,13 @@ export function TermuxSetup() {
       const info = await client.getServerInfo()
       if (info && info.token) {
         setTokenInput(info.token)
-        await Promise.all([
-          setTermuxHost(server.ip),
-          setTermuxToken(info.token),
-        ])
+        // 保存到存储（失败也不阻断，内存状态够用）
+        try {
+          await Promise.all([
+            setTermuxHost(server.ip),
+            setTermuxToken(info.token),
+          ])
+        } catch {}
         setConnected(true)
         Alert.alert('✅ 连接成功', `已自动连上 Termux 服务器 (${server.ip}:2324)`)
       } else {
