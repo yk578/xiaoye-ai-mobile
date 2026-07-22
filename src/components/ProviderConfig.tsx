@@ -22,18 +22,27 @@ export function ProviderConfig({ providers, onAdd, onRemove }: ProviderConfigPro
     name: '', baseUrl: '', apiKey: '', defaultModel: '',
   })
 
+  const [saving, setSaving] = useState(false)
+
   const handleAdd = async () => {
     if (!form.name || !form.baseUrl) {
       Alert.alert('请填写完整信息', '名称和接口地址是必填的')
       return
     }
-    await onAdd({
-      ...form,
-      defaultModel: form.defaultModel || 'oc/deepseek-v4-flash',
-    })
-    setShowForm(false)
-    setForm({ name: '', baseUrl: '', apiKey: '', defaultModel: '' })
-    Alert.alert('✅ Provider 已添加', `"${form.name}" 已保存，可以开始对话了`)
+    setSaving(true)
+    try {
+      await onAdd({
+        ...form,
+        defaultModel: form.defaultModel || 'oc/deepseek-v4-flash',
+      })
+      setShowForm(false)
+      setForm({ name: '', baseUrl: '', apiKey: '', defaultModel: '' })
+      Alert.alert('✅ Provider 已添加', `"${form.name}" 已保存，可以开始对话了`)
+    } catch (e) {
+      Alert.alert('保存失败', (e as Error).message)
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
