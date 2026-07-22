@@ -29,7 +29,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
     this.baseUrl = config.baseUrl.replace(/\/+$/, '')
     this.config = {
       apiKey: config.apiKey || null,
-      authStyle: config.authStyle ?? DEFAULT_AUTH_STYLE,
+      authStyle: config.apiKey ? (config.authStyle ?? DEFAULT_AUTH_STYLE) : AuthStyle.None,
       defaultModel: config.defaultModel,
       defaultTemperature: config.defaultTemperature ?? 0.7,
       defaultMaxTokens: config.defaultMaxTokens ?? 1048576,
@@ -84,8 +84,8 @@ export class OpenAICompatibleProvider implements LLMProvider {
       const lines = newText.split('\n')
       for (const line of lines) {
         const trimmed = line.trim()
-        if (!trimmed.startsWith('data: ')) continue
-        const data = trimmed.slice(6).trim()
+        if (!trimmed.startsWith('data:')) continue
+        const data = trimmed.slice(5).trim()
         if (data === '[DONE]') {
           doneResolve?.()
           return
@@ -220,6 +220,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
     const headers: Record<string, string> = {
       'Content-Type': contentType,
       Accept: 'text/event-stream',
+      'User-Agent': 'xiaoye-ai-mobile/2.0',
     }
     switch (this.config.authStyle) {
       case AuthStyle.Bearer:

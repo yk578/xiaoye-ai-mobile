@@ -5,47 +5,58 @@
  * 写失败自动降级到内存缓存。
  */
 
-import * as FileSystem from 'expo-file-system'
+/**
+ * 配置存储 — expo-file-system legacy 版
+ *
+ * 极简 KV 存储，写入失败时自动降级到内存缓存。
+ */
+
+import * as FileSystem from 'expo-file-system/legacy'
 import type { AppConfig, ProviderStoreEntry } from '../types'
 
-/* ── 文件路径 ── */
+/* ── 路径（延迟初始化）── */
 
-const CONFIG_DIR = `${FileSystem.documentDirectory}xiaoye-config/`
-const DATA_FILE = `${CONFIG_DIR}data.json`
+let CONFIG_DIR = ''
+let DATA_FILE = ''
+
+function ensurePaths(): boolean {
+  if (CONFIG_DIR) return true
+  try {
+    const docDir = FileSystem.documentDirectory
+    if (!docDir) return false
+    CONFIG_DIR = `${docDir}xiaoye-config/`
+    DATA_FILE = `${CONFIG_DIR}data.json`
+    return true
+  } catch {
+    return false
+  }
+}
 
 /** 内存缓存 */
 let cache: Record<string, string> | null = null
-let storageOk = true
 
 async function loadAll(): Promise<Record<string, string>> {
   if (cache) return cache
   cache = {}
+  if (!ensurePaths()) return cache
   try {
     const raw = await FileSystem.readAsStringAsync(DATA_FILE)
-    cache = JSON.parse(raw) as Record<string, string>
+    const parsed = JSON.parse(raw)
+    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+      cache = parsed as Record<string, string>
+    }
   } catch {}
   return cache!
 }
 
 async function flush(): Promise<void> {
   if (!cache) return
+  if (!ensurePaths()) return
   const json = JSON.stringify(cache)
   try {
-    // 先确保目录存在（writeAsStringAsync 在新版 expo-file-system 会自动创建目录）
     await FileSystem.writeAsStringAsync(DATA_FILE, json)
-    storageOk = true
-  } catch (e) {
-    // 如果直接写失败，试试先创建目录再写
-    try {
-      const dirInfo = await FileSystem.getInfoAsync(CONFIG_DIR)
-      if (!dirInfo.exists) {
-        await FileSystem.makeDirectoryAsync(CONFIG_DIR, { intermediates: true })
-      }
-      await FileSystem.writeAsStringAsync(DATA_FILE, json)
-      storageOk = true
-    } catch {
-      storageOk = false
-    }
+  } catch {
+    // 写失败保持内存缓存可用
   }
 }
 

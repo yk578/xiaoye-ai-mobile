@@ -4,7 +4,7 @@
  * 管理多个 AI Provider（DeepSeek、OpenAI 等），支持增删。
  */
 
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import {
   View, Text, TouchableOpacity, TextInput, StyleSheet, Alert,
 } from 'react-native'
@@ -12,8 +12,8 @@ import type { ProviderStoreEntry } from '../types'
 
 interface ProviderConfigProps {
   providers: ProviderStoreEntry[]
-  onAdd: (entry: ProviderStoreEntry) => void
-  onRemove: (name: string) => void
+  onAdd: (entry: ProviderStoreEntry) => Promise<void>
+  onRemove: (name: string) => Promise<void>
 }
 
 export function ProviderConfig({ providers, onAdd, onRemove }: ProviderConfigProps) {
@@ -23,12 +23,15 @@ export function ProviderConfig({ providers, onAdd, onRemove }: ProviderConfigPro
   })
 
   const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false)
 
   const handleAdd = async () => {
+    if (savingRef.current) return
     if (!form.name || !form.baseUrl) {
       Alert.alert('请填写完整信息', '名称和接口地址是必填的')
       return
     }
+    savingRef.current = true
     setSaving(true)
     try {
       await onAdd({
@@ -41,6 +44,7 @@ export function ProviderConfig({ providers, onAdd, onRemove }: ProviderConfigPro
     } catch (e) {
       Alert.alert('保存失败', (e as Error).message)
     } finally {
+      savingRef.current = false
       setSaving(false)
     }
   }

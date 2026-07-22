@@ -32,7 +32,7 @@ function findProviderByTier(registry: ProviderRegistry, desired: ProviderTier): 
   if (providers.length === 0) return null
   const candidates = providers.filter(p => detectTier(p) === desired)
   if (candidates.length > 0) return candidates[0]
-  const def = registry.listProviders().find(p => detectTier(p) === 'default')
+  const def = providers.find(p => detectTier(p) === 'default')
   if (def) return def
   return providers[0]
 }
@@ -57,7 +57,13 @@ export class WorkloadRouter {
     }
     const flash = findProviderByTier(this.registry, 'flash')
     const pro = findProviderByTier(this.registry, 'pro')
-    if (flash) setRoute('summarization-v1', flash)
+    const anyProvider = this.registry.listProviders()[0]
+    if (flash) {
+      setRoute('chat-v1', flash)
+      setRoute('summarization-v1', flash)
+    } else if (anyProvider) {
+      setRoute('chat-v1', anyProvider)
+    }
     if (pro) {
       setRoute('reasoning-v1', pro)
       setRoute('coding-v1', pro)

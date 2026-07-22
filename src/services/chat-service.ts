@@ -55,14 +55,13 @@ let providerInitPromise: Promise<void> | null = null
 
 async function ensureProvider(): Promise<void> {
   if (registry && router) return
-  if (providerInitPromise && registry && router) return providerInitPromise
+  if (providerInitPromise) return providerInitPromise
 
   providerInitPromise = (async () => {
-    // 即使 registry 已经存在也重新加载 Provider 列表
-    // 解决 先配空配置 → 再配 Provider 的场景
-    if (!registry) {
-      registry = ProviderRegistry.getInstance()
-    }
+    // 每次重新初始化时清空旧的注册信息
+    // 解决 先空配置 → 再配 Provider 的场景
+    registry = ProviderRegistry.getInstance()
+    registry.clear()
     const configs = await getProviderConfigs()
     if (configs.length > 0) {
       for (const cfg of configs) {
@@ -90,6 +89,9 @@ async function ensureProvider(): Promise<void> {
 
   return providerInitPromise
 }
+
+// 静默捕获未处理的 rejection（promise 缓存场景安全兜底）
+providerInitPromise?.catch(() => {})
 
 /* ── 发送消息 ── */
 
@@ -143,7 +145,10 @@ async function startStreaming(
   signal: AbortSignal
 ): Promise<void> {
   await ensureProvider()
-  if (!registry || !callbacks) return
+  if (!registry || !router || !callbacks) {
+    callbacks?.onError(sessionId, 'NO_PROVIDER', '未配置 AI Provider，请在设置中添加', false)
+    return
+  }
 
   const config = await getConfig()
   const { model, temperature, maxTokens, thinking, providerName, toolSchemas } = options
@@ -165,7 +170,12 @@ async function startStreaming(
     let activeModel: string
 
     if (providerName) {
-      activeProvider = registry.get(providerName)
+      try {
+        activeProvider = registry.get(providerName)
+      } catch {
+        callbacks.onError(sessionId, 'PROVIDER_NOT_FOUND', `Provider "${providerName}" 未找到，请在设置中检查`, false)
+        return
+      }
       activeModel = model || config.model
     } else {
       const resolved = router!.resolve('chat-v1')
