@@ -1,48 +1,68 @@
 /**
- * 配置存储 — 基于 AsyncStorage（通过 expo-sqlite）
+ * 配置存储 — 基于 expo-file-system（JSON 文件）
  *
- * 存储内容：
- * - Provider 配置列表（API Key 明文存储，手机上用安全区域）
- * - 默认模型、温度、MaxTokens
- * - Termux Token
- * - 许可信息
+ * 替换 expo-sqlite，避开 Android 原生模块 NPE。
+ * 写入做原子交换，防止断电/崩溃导致文件损坏。
  */
 
-import * as SQLite from 'expo-sqlite'
+import * as FileSystem from 'expo-file-system'
 import type { AppConfig, ProviderStoreEntry } from '../types'
 
-let db: SQLite.SQLiteDatabase | null = null
+/* ── 文件路径 ── */
 
-async function getDb(): Promise<SQLite.SQLiteDatabase> {
-  if (!db) {
-    db = await SQLite.openDatabaseAsync('xiaoye-config.db')
-    await db.execAsync(`
-      CREATE TABLE IF NOT EXISTS config (
-        key TEXT PRIMARY KEY,
-        value TEXT NOT NULL
-      );
-    `)
+const CONFIG_DIR = `${FileSystem.documentDirectory}xiaoye-config/`
+const DATA_FILE = `${CONFIG_DIR}data.json`
+const TMP_FILE = `${CONFIG_DIR}data.json.tmp`
+
+/** 内存缓存，减少重复读文件 */
+let cache: Record<string, string> | null = null
+
+async function ensureDir(): Promise<void> {
+  const info = await FileSystem.getInfoAsync(CONFIG_DIR)
+  if (!info.exists) {
+    await FileSystem.makeDirectoryAsync(CONFIG_DIR, { intermediates: true })
   }
-  return db
 }
 
-/* ── 通用 KV 存储 ── */
+async function loadAll(): Promise<Record<string, string>> {
+  if (cache) return cache
+  cache = {}
+  try {
+    const raw = await FileSystem.readAsStringAsync(DATA_FILE)
+    cache = JSON.parse(raw)
+  } catch {
+    // 文件不存在或损坏，用空对象
+    cache = {}
+  }
+  return cache!
+}
+
+async function flush(): Promise<void> {
+  if (!cache) return
+  await ensureDir()
+  const json = JSON.stringify(cache)
+  // 先写临时文件，再 rename（原子交换）
+  await FileSystem.writeAsStringAsync(TMP_FILE, json)
+  await FileSystem.moveAsync({ from: TMP_FILE, to: DATA_FILE })
+}
+
+/* ── 通用 KV ── */
 
 async function get(key: string): Promise<string | null> {
-  const d = await getDb()
-  const row = await d.getFirstAsync<{ value: string }>('SELECT value FROM config WHERE key = ?', key)
-  return row?.value ?? null
+  const all = await loadAll()
+  return all[key] ?? null
 }
 
 async function set(key: string, value: string): Promise<void> {
-  const d = await getDb()
-  await d.runAsync('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)', key, value)
+  const all = await loadAll()
+  all[key] = value
+  await flush()
 }
 
 /* ── 默认值 ── */
 
 const DEFAULTS: Omit<AppConfig, 'apiKey'> = {
-  model: 'deepseek-v4-pro',
+  model: 'oc/deepseek-v4-flash',
   temperature: 0.7,
   maxTokens: 131072,
   tokenBudget: 100000,
@@ -72,7 +92,7 @@ export async function hasApiKey(): Promise<boolean> {
   return config.apiKey.length > 0
 }
 
-/* ── Provider 配置管理 ── */
+/* ── Provider 配置 ── */
 
 export async function getProviderConfigs(): Promise<ProviderStoreEntry[]> {
   const raw = await get('providers')
@@ -126,7 +146,7 @@ export async function setLicenseData(data: string): Promise<void> {
   await set('licenseData', data)
 }
 
-/* ── 会话/对话存储 ── */
+/* ── 对话存储 ── */
 
 export async function saveConversation(convId: string, data: string): Promise<void> {
   await set(`conv_${convId}`, data)
