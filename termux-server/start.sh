@@ -1,8 +1,8 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════
-# 小叶AI 一键启动 v6 - 绝对可靠
+# 小叶AI 一键启动 v7
 # ═══════════════════════════════════════════════════════
-# 用 tmux 后台运行 9router，等菜单出现后自动按 3
+# 用 tmux 后台跑 9router，等菜单出来自动按 3
 # ═══════════════════════════════════════════════════════
 
 DIR=~/xiaoye-server
@@ -15,32 +15,33 @@ command -v tmux &>/dev/null || pkg install tmux -y
 pkill -f 9router 2>/dev/null
 sleep 1
 
-# 启动 9router 到 tmux 会话
+# 启动 9router 到 tmux 会话（菜单界面）
+echo "⏳ 启动 9router..."
 tmux new-session -d -s 9router '9router --port 7777 --host 127.0.0.1'
 
-# 等 9router 菜单出现（检测端口 7777 开始监听）
-echo -n "⏳ 等待 9router..."
-for i in $(seq 1 15); do
-  sleep 1
-  echo -n "."
-  # 如果能连上 7777 说明菜单已显示，按 3
-  if curl -s --max-time 1 http://127.0.0.1:7777 >/dev/null 2>&1; then
-    echo ""
-    echo "✅ 9router 菜单已加载，自动隐藏到托盘..."
-    tmux send-keys -t 9router '3'
-    sleep 3
-    break
-  fi
-done
+# 等菜单加载完成（固定等 5 秒足够）
+sleep 5
 
-# 再验证一次
+# 自动按 3 选 Hide to Tray
+tmux send-keys -t 9router '3'
+sleep 2
+
+# 验证
 if curl -s --max-time 2 http://127.0.0.1:7777 >/dev/null 2>&1; then
   echo "✅ 9router 运行中 (端口 7777)"
 else
   echo ""
-  echo "⚠️ 9router 菜单没自动隐藏，手动操作："
-  echo "   tmux attach -t 9router"
-  echo "   然后按数字 3 选择 Hide to Tray"
+  echo "⚠️ 第一次自动隐藏没成功，再试一次..."
+  tmux send-keys -t 9router '3'
+  sleep 3
+  if curl -s --max-time 2 http://127.0.0.1:7777 >/dev/null 2>&1; then
+    echo "✅ 9router 运行中 (端口 7777)"
+  else
+    echo ""
+    echo "📌 请手动操作："
+    echo "   tmux attach -t 9router"
+    echo "   然后在菜单里按数字 3（Hide to Tray）"
+  fi
 fi
 
 # 启动小叶服务器
