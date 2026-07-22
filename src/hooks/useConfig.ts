@@ -11,6 +11,7 @@ import {
   getProviderConfigs, addProviderConfig, removeProviderConfig,
   getTermuxToken, setTermuxToken, getTermuxHost, setTermuxHost,
 } from '../services/config-store'
+import { resetProviderCache } from '../services/chat-service'
 import type { ProviderStoreEntry, AppConfig } from '../types'
 
 export function useConfig() {
@@ -60,11 +61,13 @@ export function useConfig() {
 
   const addProvider = useCallback(async (entry: ProviderStoreEntry) => {
     await addProviderConfig(entry)
+    resetProviderCache() // 清缓存，让 chat 下次拿到新的
     setProviders(await getProviderConfigs())
   }, [])
 
   const removeProvider = useCallback(async (name: string) => {
     await removeProviderConfig(name)
+    resetProviderCache()
     setProviders(await getProviderConfigs())
   }, [])
 

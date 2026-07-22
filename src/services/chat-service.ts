@@ -52,17 +52,31 @@ export function setCallbacks(cb: ChatCallbacks): void {
   callbacks = cb
 }
 
+/* ── 外部可以调用这个来重置 Provider 缓存（添加/删除 Provider 后）── */
+
+export function resetProviderCache(): void {
+  providerInitPromise = null
+}
+
 /* ── Provider 初始化 ── */
 
 let providerInitPromise: Promise<void> | null = null
 
 async function ensureProvider(): Promise<void> {
+  // 如果 router 已就绪直接返回
   if (registry && router) return
-  if (providerInitPromise) return providerInitPromise
+
+  // 如果有缓存的 Promise，但 resolved 后 router 仍为 null
+  // 说明之前 provider 列表为空，需要重试
+  if (providerInitPromise) {
+    await providerInitPromise
+    if (router) return
+    // 重试：走到这里说明之前的初始化没有创建 router（provider 列表为空）
+    // 重置 Promise 以便重新加载
+    providerInitPromise = null
+  }
 
   providerInitPromise = (async () => {
-    // 每次重新初始化时清空旧的注册信息
-    // 解决 先空配置 → 再配 Provider 的场景
     registry = ProviderRegistry.getInstance()
     registry.clear()
     const configs = await getProviderConfigs()
