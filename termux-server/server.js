@@ -38,8 +38,21 @@ function loadOrCreateToken() {
 
 loadOrCreateToken()
 
-/* ── 获取本机 IP ── */
+/* ── 获取本机 IP（Termux 上 os.networkInterfaces 触发 netlink 权限错误，改用 ifconfig） ── */
 function getLocalIP() {
+  // Termux: 用 ifconfig 取 IP（不会触发 netlink 权限检查）
+  try {
+    const out = execSync('ifconfig 2>/dev/null | grep -oE "inet [0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+" | head -1 | cut -d" " -f2', { encoding: 'utf-8', timeout: 5000 })
+    const ip = out.trim()
+    if (ip && ip !== '127.0.0.1') return ip
+  } catch {}
+  // 备选：hostname -I
+  try {
+    const out = execSync('hostname -I 2>/dev/null', { encoding: 'utf-8', timeout: 5000 })
+    const ip = out.trim().split(/\s+/)[0]
+    if (ip && ip !== '127.0.0.1') return ip
+  } catch {}
+  // 再备选：os.networkInterfaces（非 Termux 环境）
   try {
     const interfaces = os.networkInterfaces()
     for (const name of Object.keys(interfaces)) {
@@ -47,11 +60,6 @@ function getLocalIP() {
         if (iface.family === 'IPv4' && !iface.internal) return iface.address
       }
     }
-  } catch {}
-  // fallback: 尝试解析 hostname
-  try {
-    const out = execSync('hostname -I 2>/dev/null || ip addr show 2>/dev/null | grep -oP "(?<=inet )\\d+\\.\\d+\\.\\d+\\.\\d+" | grep -v 127.0.0.1 | head -1', { encoding: 'utf-8', timeout: 5000 })
-    return out.trim().split(/\s+/)[0]
   } catch {}
   return '127.0.0.1'
 }

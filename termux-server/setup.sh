@@ -102,30 +102,47 @@ chmod +x "$SERVER_DIR/status.sh"
 # 4. 启动服务
 echo -e "${BOLD}[4/4] 启动服务...${NC}"
 
-# 启动 9router
-if ss -tln | grep -q :7777; then
+# 启动 9router（Termux 需要 proot 绕过 netlink 权限限制）
+if curl -s --max-time 2 http://127.0.0.1:7777 >/dev/null 2>&1; then
   echo -e "  ${CYAN}⚠ 9router 已在运行 (端口 7777)${NC}"
 else
-  nohup 9router --port 7777 > "$SERVER_DIR/9router.log" 2>&1 &
-  sleep 3
-  if curl -s http://127.0.0.1:7777 >/dev/null 2>&1; then
+  # Termux 上 os.networkInterfaces() 触发 SELinux netlink 限制
+  # 用 proot 绕过（proot 提供 /proc 和 netlink 访问）
+  if command -v proot &>/dev/null; then
+    nohup proot -0 9router --port 7777 > "$SERVER_DIR/9router.log" 2>&1 &
+  else
+    # 没有 proot，尝试直接启动（可能也 work，取决 Node.js 版本）
+    nohup 9router --port 7777 > "$SERVER_DIR/9router.log" 2>&1 &
+  fi
+  # 9router 启动可能稍慢，等 10 秒
+  WAIT=0
+  while [ $WAIT -lt 10 ]; do
+    sleep 1
+    WAIT=$((WAIT + 1))
+    if curl -s --max-time 1 http://127.0.0.1:7777 >/dev/null 2>&1; then
+      break
+    fi
+  done
+  if curl -s --max-time 2 http://127.0.0.1:7777 >/dev/null 2>&1; then
     echo -e "  ${GREEN}✓${NC} 9router 已启动 (端口 7777)"
   else
-    echo -e "  ${RED}✗ 9router 启动失败，日志: cat $SERVER_DIR/9router.log${NC}"
+    echo -e "  ${RED}✗ 9router 启动失败${NC}"
+    echo -e "  ${DIM}   试试手动启动看看真实错误:${NC}"
+    echo -e "  ${DIM}   9router --port 7777${NC}"
+    echo -e "  ${DIM}   日志: tail -20 $SERVER_DIR/9router.log${NC}"
   fi
 fi
 
 # 启动小叶服务器
-if ss -tln | grep -q :2324; then
+if curl -s --max-time 2 http://127.0.0.1:2324/ping >/dev/null 2>&1; then
   echo -e "  ${CYAN}⚠ 小叶服务器已在运行 (端口 2324)${NC}"
 else
-  nohup node "$SERVER_DIR/server.js" > "$SERVER_DIR/server.log" 2>&1 &
-  sleep 2
-  TOKEN=$(cat ~/.xiaoye-token 2>/dev/null)
-  if curl -s http://127.0.0.1:2324/ping -H "X-Auth-Token: $TOKEN" >/dev/null 2>&1; then
+  nohup node "$SERVER_DIR/server.js" >> "$SERVER_DIR/server.log" 2>&1 &
+  sleep 3
+  if curl -s --max-time 2 http://127.0.0.1:2324/ping >/dev/null 2>&1; then
     echo -e "  ${GREEN}✓${NC} 小叶服务器已启动 (端口 2324)"
   else
-    echo -e "  ${RED}✗ 小叶服务器启动失败，日志: cat $SERVER_DIR/server.log${NC}"
+    echo -e "  ${RED}✗ 小叶服务器启动失败，日志: tail -20 $SERVER_DIR/server.log${NC}"
   fi
 fi
 
