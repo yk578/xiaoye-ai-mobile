@@ -3,7 +3,7 @@
 # 小叶AI Termux 一键安装脚本 v4 — 含 9router 免费模型
 # ═══════════════════════════════════════════════════════
 # 用法（一行完整命令）：
-#   curl -sL https://raw.githubusercontent.com/yk578/xiaoye-ai-mobile/main/termux-server/setup.sh | bash
+#   curl -sL https://raw.githubusercontent.com/yk578/xiaoye-ai-mobile/master/termux-server/setup.sh | bash
 # ═══════════════════════════════════════════════════════
 
 BOLD='\033[1m'
@@ -55,7 +55,7 @@ fi
 echo -e "${BOLD}[3/4] 下载小叶服务器...${NC}"
 mkdir -p "$SERVER_DIR"
 
-GITHUB_URL="https://raw.githubusercontent.com/yk578/xiaoye-ai-mobile/main/termux-server/server.js"
+GITHUB_URL="https://raw.githubusercontent.com/yk578/xiaoye-ai-mobile/master/termux-server/server.js"
 if curl -sL --connect-timeout 10 "$GITHUB_URL" -o "$SERVER_DIR/server.js" && [ -s "$SERVER_DIR/server.js" ]; then
   echo -e "  ${GREEN}✓${NC} 服务器文件已下载"
 else

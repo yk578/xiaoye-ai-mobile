@@ -5,7 +5,7 @@
  * 提供文件系统操作、命令执行和 UDP 自动发现。
  *
  * 启动: node server.js
- * 一键安装: curl -sL https://raw.githubusercontent.com/yk578/xiaoye-ai-mobile/main/termux-server/setup.sh | bash
+ * 一键安装: curl -sL https://raw.githubusercontent.com/yk578/xiaoye-ai-mobile/master/termux-server/setup.sh | bash
  */
 
 const http = require('http')

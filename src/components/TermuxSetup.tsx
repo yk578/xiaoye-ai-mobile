@@ -110,7 +110,7 @@ export function TermuxSetup() {
   }, [phoneIp, tokenInput])
 
   const copyCommand = useCallback(async () => {
-    const cmd = 'curl -sL https://raw.githubusercontent.com/yk578/xiaoye-ai-mobile/main/termux-server/setup.sh | bash'
+    const cmd = 'curl -sL https://raw.githubusercontent.com/yk578/xiaoye-ai-mobile/master/termux-server/setup.sh | bash'
     await Clipboard.setStringAsync(cmd)
     Alert.alert('已复制', '请在 Termux 中粘贴运行\n长按 Termux 屏幕 → Paste')
   }, [])
