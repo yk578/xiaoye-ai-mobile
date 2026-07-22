@@ -1,0 +1,19 @@
+{
+  "name": "xiaoye-termux-server",
+  "version": "2.0.0",
+  "description": "小叶AI Termux 服务端 — 手机端代码执行引擎",
+  "main": "server.js",
+  "bin": {
+    "xiaoye-server": "./server.js"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["xiaoye", "termux", "mobile", "ai"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yk578/xiaoye-ai-mobile"
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "小叶AI",
+    "slug": "xiaoye-ai-mobile",
+    "version": "2.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "scheme": "xiaoye",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.xiaoyeai.mobile"
+    },
+    "android": {
+      "package": "com.xiaoyeai.mobile",
+      "versionCode": 2,
+      "adaptiveIcon": {
+        "backgroundColor": "#0a0a0a",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ],
+      "usesCleartextTraffic": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-sqlite"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "5c0c198f-1735-48be-8ac4-80640f521e3c"
+      }
+    },
+    "owner": "yk578"
+  }
+}
