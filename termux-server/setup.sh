@@ -63,15 +63,23 @@ else
   exit 1
 fi
 
-# 写启动脚本（同时启动两个服务）
+# 写启动脚本（proot 绕过 Android netlink 限制）
 cat > "$SERVER_DIR/start.sh" << 'STARTEOF'
 #!/bin/bash
-DIR="$(cd "$(dirname "$0")" && pwd)"
-echo "--- 启动 9router（免费 AI 模型）---"
-nohup 9router --port 7777 > "$DIR/9router.log" 2>&1 &
-echo "  9router PID: $!"
-echo "--- 启动小叶服务器 ---"
-exec node "$DIR/server.js"
+DIR=~/xiaoye-server
+echo "🚀 启动 9router（免费 AI 模型）..."
+proot -0 9router --port 7777 > /dev/null 2>&1 &
+sleep 5
+echo "🚀 启动小叶服务器..."
+nohup node "$DIR/server.js" > /dev/null 2>&1 &
+sleep 2
+echo ""
+echo "✅ 全部已启动！"
+echo ""
+echo "   9router:    http://127.0.0.1:7777"
+echo "   小叶服务器:  http://127.0.0.1:2324"
+echo ""
+echo "📱 App 设置 → 自动发现 → 开聊"
 STARTEOF
 chmod +x "$SERVER_DIR/start.sh"
 
